@@ -1,0 +1,13 @@
+public protocol Lockable {
+    func lock()
+    func unlock()
+}
+
+extension Lockable {
+    func lock<R>(_ work: () throws -> R) rethrows -> R {
+        lock()
+        defer { unlock() }
+        
+        return try work()
+    }
+}
