@@ -26,7 +26,7 @@ public final class ReadWriteLock {
     }
     
     public func exclusiveLock() {
-        pthread_rwlock_rdlock(&mutex)
+        pthread_rwlock_wrlock(&mutex)
     }
     
     public func unlock() {

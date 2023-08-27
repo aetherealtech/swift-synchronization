@@ -35,20 +35,6 @@ public final class Synchronized<T> {
         try lock.write { try work(&_value) }
     }
 
-    /// Update the current value and return the original value before the update in a single operation.
-    /// This ensures that no other mutations of the value can occur between obtaining the current value and updating it
-    ///
-    /// - Parameter work: A block of work that takes the current (mutable) value as a parameter to update it
-    /// - Returns: The original value before the update was performed
-    /// - Throws: The error, if any, that is thrown by the block of work
-    func getAndSet(_ work: (inout T) throws -> Void) rethrows -> T {
-        try lock.write {
-            let value = _value
-            try work(&_value)
-            return value
-        }
-    }
-
     public subscript<Member>(dynamicMember keyPath: KeyPath<T, Member>) -> Member {
         read { value in value[keyPath: keyPath] }
     }
@@ -60,4 +46,26 @@ public final class Synchronized<T> {
 
     private var _value: T
     private let lock = ReadWriteLock()
+}
+
+public extension Synchronized {
+    /// Update the current value and return the original value before the update in a single operation.
+    /// This ensures that no other mutations of the value can occur between obtaining the current value and updating it
+    ///
+    /// - Parameter work: A block of work that takes the current (mutable) value as a parameter to update it
+    /// - Returns: The original value before the update was performed
+    /// - Throws: The error, if any, that is thrown by the block of work
+    func getAndSet(_ work: (inout T) throws -> Void) rethrows -> T {
+        return try write { value in
+            var oldValue = value
+            try work(&value)
+            return oldValue
+        }
+    }
+    
+    func swap(_ otherValue: inout T) {
+        otherValue = getAndSet { value in
+            value = otherValue
+        }
+    }
 }
