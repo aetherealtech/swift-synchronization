@@ -1,6 +1,6 @@
 import Darwin
 
-public final class Lock: Lockable {
+public final class Lock: Lockable, @unchecked Sendable {
     public init() {
         var attr = pthread_mutexattr_t()
         defer { pthread_mutexattr_destroy(&attr) }

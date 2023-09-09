@@ -3,7 +3,7 @@ public protocol Lockable {
     func unlock()
 }
 
-extension Lockable {
+public extension Lockable {
     func lock<R>(_ work: () throws -> R) rethrows -> R {
         lock()
         defer { unlock() }

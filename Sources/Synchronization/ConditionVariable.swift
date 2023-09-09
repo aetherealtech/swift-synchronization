@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-public final class ConditionVariable {
+public final class ConditionVariable: ConditionVariableProtocol, @unchecked Sendable {
     public init() {
         var attr = pthread_condattr_t()
         defer { pthread_condattr_destroy(&attr) }
@@ -84,80 +84,5 @@ public final class ConditionVariable {
     ) {
         var timespec = timespec
         pthread_cond_timedwait(&conditionVariable, &lock.mutex, &timespec)
-    }
-}
-
-public extension ConditionVariable {
-    func wait(
-        lock: Lock,
-        _ condition: () throws -> Bool
-    ) rethrows {
-        try wait(
-            lock: lock,
-            wait: self.wait,
-            condition
-        )
-    }
-    
-    func wait(
-        lock: Lock,
-        for timeout: TimeInterval,
-        _ condition: () throws -> Bool
-    ) rethrows {
-        try wait(
-            lock: lock,
-            wait: { lock in wait(lock: lock, for: timeout) },
-            condition
-        )
-    }
-    
-    @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
-    func wait(
-        lock: Lock,
-        for timeout: Duration,
-        _ condition: () throws -> Bool
-    ) rethrows {
-        try wait(
-            lock: lock,
-            wait: { lock in wait(lock: lock, for: timeout) },
-            condition
-        )
-    }
-    
-    func wait(
-        lock: Lock,
-        until timeout: Date,
-        _ condition: () throws -> Bool
-    ) rethrows {
-        try wait(
-            lock: lock,
-            wait: { lock in wait(lock: lock, until: timeout) },
-            condition
-        )
-    }
-    
-    @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
-    func wait<C: Clock>(
-        lock: Lock,
-        until timeout: C.Instant,
-        tolerance: C.Duration? = nil,
-        clock: C,
-        _ condition: () throws -> Bool
-    ) rethrows where C.Duration == Duration {
-        try wait(
-            lock: lock,
-            wait: { lock in wait(lock: lock, until: timeout, tolerance: tolerance, clock: clock) },
-            condition
-        )
-    }
-    
-    private func wait(
-        lock: Lock,
-        wait: (Lock) -> Void,
-        _ condition: () throws -> Bool
-    ) rethrows {
-        while try !condition() {
-            wait(lock)
-        }
     }
 }

@@ -4,7 +4,7 @@
  */
 @propertyWrapper
 @dynamicMemberLookup
-public final class Synchronized<T> {
+public final class Synchronized<T>: @unchecked Sendable {
     public init(wrappedValue: T) {
         _value = wrappedValue
     }
@@ -57,7 +57,7 @@ public extension Synchronized {
     /// - Throws: The error, if any, that is thrown by the block of work
     func getAndSet(_ work: (inout T) throws -> Void) rethrows -> T {
         return try write { value in
-            var oldValue = value
+            let oldValue = value
             try work(&value)
             return oldValue
         }
@@ -66,6 +66,20 @@ public extension Synchronized {
     func swap(_ otherValue: inout T) {
         otherValue = getAndSet { value in
             value = otherValue
+        }
+    }
+ 
+    func wait(
+        _ conditionVariable: AnyConditionVariable<SharedLock>,
+        until condition: (T) -> Bool
+    ) {
+        let cvLock = lock.sharedLockable
+        
+        cvLock.lock()
+        defer { cvLock.unlock() }
+        
+        conditionVariable.wait(lock: lock.sharedLockable) {
+            read(condition)
         }
     }
 }
