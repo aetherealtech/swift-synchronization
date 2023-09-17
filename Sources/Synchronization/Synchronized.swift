@@ -22,7 +22,7 @@ public final class Synchronized<T>: @unchecked Sendable {
     /// - Parameter work: A block of work that takes the current (immutable) value as a parameter and optionally returns a value
     /// - Returns: The value, if any, that is returned by the block of work
     /// - Throws: The error, if any, that is thrown by the block of work
-    func read<R>(_ work: (T) throws -> R) rethrows -> R {
+    public func read<R>(_ work: (T) throws -> R) rethrows -> R {
         try lock.read { try work(_value) }
     }
 
@@ -35,20 +35,34 @@ public final class Synchronized<T>: @unchecked Sendable {
         try lock.write { try work(&_value) }
     }
 
-    public subscript<Member>(dynamicMember keyPath: KeyPath<T, Member>) -> Member {
-        read { value in value[keyPath: keyPath] }
+    public func wait(
+        _ conditionVariable: AnyConditionVariable<SharedLock>,
+        until condition: (T) -> Bool
+    ) {
+        let cvLock = lock.sharedLockable
+        
+        cvLock.lock()
+        defer { cvLock.unlock() }
+        
+        conditionVariable.wait(lock: cvLock) {
+            condition(_value)
+        }
     }
-
-    public subscript<Member>(dynamicMember keyPath: WritableKeyPath<T, Member>) -> Member {
-        get { read { value in value[keyPath: keyPath] } }
-        set { write { value in value[keyPath: keyPath] = newValue } }
-    }
-
+    
     private var _value: T
     private let lock = ReadWriteLock()
 }
 
 public extension Synchronized {
+    subscript<Member>(dynamicMember keyPath: KeyPath<T, Member>) -> Member {
+        read { value in value[keyPath: keyPath] }
+    }
+
+    subscript<Member>(dynamicMember keyPath: WritableKeyPath<T, Member>) -> Member {
+        get { read { value in value[keyPath: keyPath] } }
+        set { write { value in value[keyPath: keyPath] = newValue } }
+    }
+
     /// Update the current value and return the original value before the update in a single operation.
     /// This ensures that no other mutations of the value can occur between obtaining the current value and updating it
     ///
@@ -66,20 +80,6 @@ public extension Synchronized {
     func swap(_ otherValue: inout T) {
         otherValue = getAndSet { value in
             value = otherValue
-        }
-    }
- 
-    func wait(
-        _ conditionVariable: AnyConditionVariable<SharedLock>,
-        until condition: (T) -> Bool
-    ) {
-        let cvLock = lock.sharedLockable
-        
-        cvLock.lock()
-        defer { cvLock.unlock() }
-        
-        conditionVariable.wait(lock: lock.sharedLockable) {
-            read(condition)
         }
     }
 }

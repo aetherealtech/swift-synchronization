@@ -1,28 +1,42 @@
 // swift-tools-version: 5.8
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(
     name: "Synchronization",
     products: [
-        // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
             name: "Synchronization",
-            targets: ["Synchronization"]),
+            targets: ["Synchronization"]
+        ),
     ],
-    dependencies: [
-        // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
-    ],
+    dependencies: [],
     targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "Synchronization",
-            dependencies: []),
+            dependencies: [],
+            swiftSettings: [.concurrencyChecking(.complete)]
+        ),
         .testTarget(
             name: "SynchronizationTests",
-            dependencies: ["Synchronization"]),
+            dependencies: ["Synchronization"],
+            swiftSettings: [.concurrencyChecking(.complete)]
+        ),
     ]
 )
+
+extension SwiftSetting {
+    enum ConcurrencyChecking: String {
+        case complete
+        case minimal
+        case targeted
+    }
+    
+    static func concurrencyChecking(_ setting: ConcurrencyChecking = .minimal) -> Self {
+        unsafeFlags([
+            "-Xfrontend", "-strict-concurrency=\(setting)",
+            "-Xfrontend", "-warn-concurrency",
+            "-Xfrontend", "-enable-actor-data-race-checks",
+        ])
+    }
+}

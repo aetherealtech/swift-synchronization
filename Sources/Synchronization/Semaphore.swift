@@ -1,4 +1,4 @@
-public final class Semaphore {
+public final class Semaphore: @unchecked Sendable {
     public init(value: Int) {
         self.value = value
     }

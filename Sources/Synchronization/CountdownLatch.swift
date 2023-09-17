@@ -1,4 +1,4 @@
-public final class CountdownLatch {
+public final class CountdownLatch: @unchecked Sendable {
     public init(value: Int) {
         self.value = value
     }

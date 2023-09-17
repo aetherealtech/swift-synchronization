@@ -4,10 +4,10 @@ import Darwin
  ReadWriteLock enables thread-safe execution of code.
  Blocks passed to "read" and "write" will be synchronized according to the following rules:
  Multiple read blocks are allowed to execute concurrently, but write blocks are given exclusive access (neither reads nor other writes can execute concurrently with a write).
- Since thread safety is typically about protected *resources*, rather than *code*, ReadWriteLock should rarely be used directly.
+ Since thread safety is typically about protecting *resources*, rather than *code*, ReadWriteLock should rarely be used directly.
  Instead, Synchronized satisfies most use cases.
  */
-public final class ReadWriteLock {
+public final class ReadWriteLock: @unchecked Sendable {
     public init() {
         var attr = pthread_rwlockattr_t()
         defer { pthread_rwlockattr_destroy(&attr) }

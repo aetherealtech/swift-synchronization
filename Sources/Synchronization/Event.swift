@@ -1,4 +1,4 @@
-public final class Event {
+public final class Event: @unchecked Sendable {
     public init() {}
 
     public var signaled: Bool { lock.lock { signaledInternal } }
