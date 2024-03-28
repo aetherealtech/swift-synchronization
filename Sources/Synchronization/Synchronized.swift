@@ -5,6 +5,7 @@
 @propertyWrapper
 @dynamicMemberLookup
 public final class Synchronized<T>: @unchecked Sendable {
+    // Yielding is important (using `_read` and `_modify` instead of `get` and `set`) particularly with mutation, because it avoids in-out behavior (locking the value to perform a read, unlocking, mutating the value, then locking again to write the mutated value back), which isn't an atomic operation.  By yielding the value directly, mutation occurs "in place", *before* the `defer` block runs, so that it is entirely contained in a single atomic operation.
     public init(wrappedValue: T) {
         _value = wrappedValue
     }
@@ -13,8 +14,16 @@ public final class Synchronized<T>: @unchecked Sendable {
     
     /// Access the value for reading or writing.  Reads can be performed concurrently, but writes acquire exclusive access
     public var wrappedValue: T {
-        get { lock.read { _value } }
-        set { lock.write { _value = newValue } }
+        _read {
+            lock.lock()
+            defer { lock.unlock() }
+            yield _value
+        }
+        _modify {
+            lock.exclusiveLock()
+            defer { lock.unlock() }
+            yield &_value
+        }
     }
 
     /// Acquire the value to be read for a block of work.
@@ -71,7 +80,7 @@ public extension Synchronized {
         _modify {
             lock.exclusiveLock()
             defer { lock.unlock() }
-            yield &_value[keyPath: keyPath] // Yielding is important here because it avoids in-out behavior (locking the value to perform a read, unlocking, mutating the value, then locking again to write the mutated value back), which isn't an atomic operation.  By yielding the value directly, mutation occurs "in place", *before* the `defer` block runs, so that it is entirely contained in a single atomic operation.
+            yield &_value[keyPath: keyPath]
         }
     }
 
