@@ -1,5 +1,5 @@
 /**
- Synchronized<T> is a thread-safe T.  Access is protected by a ReadWriteLock
+ `Synchronized<T>` is a thread-safe T.  Access is protected by a `ReadWriteLock`.
  Non-mutating operations can be performed concurrently from multiple threads, but mutating operations acquire exclusive access and block all other operations (both mutating and non-mutating)
  */
 @propertyWrapper
@@ -55,12 +55,24 @@ public final class Synchronized<T>: @unchecked Sendable {
 
 public extension Synchronized {
     subscript<Member>(dynamicMember keyPath: KeyPath<T, Member>) -> Member {
-        read { value in value[keyPath: keyPath] }
+        _read {
+            lock.lock()
+            defer { lock.unlock() }
+            yield _value[keyPath: keyPath]
+        }
     }
 
     subscript<Member>(dynamicMember keyPath: WritableKeyPath<T, Member>) -> Member {
-        get { read { value in value[keyPath: keyPath] } }
-        set { write { value in value[keyPath: keyPath] = newValue } }
+        _read {
+            lock.lock()
+            defer { lock.unlock() }
+            yield _value[keyPath: keyPath]
+        }
+        _modify {
+            lock.exclusiveLock()
+            defer { lock.unlock() }
+            yield &_value[keyPath: keyPath] // Yielding is important here because it avoids in-out behavior (locking the value to perform a read, unlocking, mutating the value, then locking again to write the mutated value back), which isn't an atomic operation.  By yielding the value directly, mutation occurs "in place", *before* the `defer` block runs, so that it is entirely contained in a single atomic operation.
+        }
     }
 
     /// Update the current value and return the original value before the update in a single operation.
@@ -79,6 +91,12 @@ public extension Synchronized {
     
     func swap(_ otherValue: inout T) {
         otherValue = getAndSet { value in
+            value = otherValue
+        }
+    }
+    
+    func swap(_ otherValue: T) -> T {
+        getAndSet { value in
             value = otherValue
         }
     }

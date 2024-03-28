@@ -1,11 +1,12 @@
 import Darwin
 
 /**
- ReadWriteLock enables thread-safe execution of code.
- Blocks passed to "read" and "write" will be synchronized according to the following rules:
- Multiple read blocks are allowed to execute concurrently, but write blocks are given exclusive access (neither reads nor other writes can execute concurrently with a write).
- Since thread safety is typically about protecting *resources*, rather than *code*, ReadWriteLock should rarely be used directly.
- Instead, Synchronized satisfies most use cases.
+ `ReadWriteLock` enables thread-safe execution of code.
+ Blocks passed to `read` and `write` will be synchronized according to the following rules:
+  • Multiple `read` blocks are allowed to execute concurrently,
+  • `write` blocks are given exclusive access (neither reads nor other writes can execute concurrently with a write).
+ Since thread safety is typically about protecting *resources*, rather than *code*, `ReadWriteLock` should rarely be used directly.
+ Instead, `Synchronized` satisfies most use cases for ensuring thread-safe access to resources.
  */
 public final class ReadWriteLock: @unchecked Sendable {
     public init() {
@@ -37,7 +38,6 @@ public final class ReadWriteLock: @unchecked Sendable {
 }
 
 public extension ReadWriteLock {
-    
     /// Perform a "read" type block of work.  The submitted block can execute concurrently with other submitted "read" blocks, but not with submitted "write" blocks
     ///
     /// - Parameter work: The block of work to submit
