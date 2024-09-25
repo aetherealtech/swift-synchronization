@@ -4,16 +4,14 @@
  */
 @propertyWrapper
 @dynamicMemberLookup
-public final class Synchronized<T>: @unchecked Sendable {
-    // Yielding is important (using `_read` and `_modify` instead of `get` and `set`) particularly with mutation, because it avoids in-out behavior (locking the value to perform a read, unlocking, mutating the value, then locking again to write the mutated value back), which isn't an atomic operation.  By yielding the value directly, mutation occurs "in place", *before* the `defer` block runs, so that it is entirely contained in a single atomic operation.
-    public init(wrappedValue: T) {
+public final class Synchronized<T: ~Copyable>: @unchecked Sendable {
+    public init(wrappedValue: consuming T) {
         _value = wrappedValue
     }
-
-    public var projectedValue: Synchronized { self }
     
     /// Access the value for reading or writing.  Reads can be performed concurrently, but writes acquire exclusive access
     public var wrappedValue: T {
+        // Yielding is important (using `_read` and `_modify` instead of `get` and `set`) particularly with mutation, because it avoids in-out behavior (locking the value to perform a read, unlocking, mutating the value, then locking again to write the mutated value back), which isn't an atomic operation.  By yielding the value directly, mutation occurs "in place", *before* the `defer` block runs, so that it is entirely contained in a single atomic operation.
         _read {
             lock.lock()
             defer { lock.unlock() }
@@ -31,8 +29,8 @@ public final class Synchronized<T>: @unchecked Sendable {
     /// - Parameter work: A block of work that takes the current (immutable) value as a parameter and optionally returns a value
     /// - Returns: The value, if any, that is returned by the block of work
     /// - Throws: The error, if any, that is thrown by the block of work
-    public func read<R>(_ work: (T) throws -> R) rethrows -> R {
-        try lock.read { try work(_value) }
+    public func read<R, E: Error>(_ work: (borrowing T) throws(E) -> R) throws(E) -> R {
+        try lock.read { () throws(E) -> R in try work(_value) }
     }
 
     /// Acquire the value to be written to by a block of work.
@@ -40,21 +38,21 @@ public final class Synchronized<T>: @unchecked Sendable {
     /// - Parameter work: A block of work that takes the current (mutable) value as a parameter and optionally returns a value
     /// - Returns: The value, if any, that is returned by the block of work
     /// - Throws: The error, if any, that is thrown by the block of work
-    public func write<R>(_ work: (inout T) throws -> R) rethrows -> R {
-        try lock.write { try work(&_value) }
+    public func write<R, E: Error>(_ work: (inout T) throws(E) -> R) throws(E) -> R {
+        try lock.write { () throws(E) -> R in try work(&_value) }
     }
 
-    public func wait(
+    public func wait<E: Error>(
         _ conditionVariable: AnyConditionVariable<SharedLock>,
-        until condition: (T) -> Bool
-    ) {
+        until condition: (borrowing T) throws(E) -> Bool
+    ) throws(E) {
         let cvLock = lock.sharedLockable
         
         cvLock.lock()
         defer { cvLock.unlock() }
         
-        conditionVariable.wait(lock: cvLock) {
-            condition(_value)
+        try conditionVariable.wait(lock: cvLock) { () throws(E) in
+            try condition(_value)
         }
     }
     
@@ -62,7 +60,7 @@ public final class Synchronized<T>: @unchecked Sendable {
     private let lock = ReadWriteLock()
 }
 
-public extension Synchronized {
+public extension Synchronized where T: ~Copyable {
     subscript<Member>(dynamicMember keyPath: KeyPath<T, Member>) -> Member {
         _read {
             lock.lock()
@@ -90,8 +88,8 @@ public extension Synchronized {
     /// - Parameter work: A block of work that takes the current (mutable) value as a parameter to update it
     /// - Returns: The original value before the update was performed
     /// - Throws: The error, if any, that is thrown by the block of work
-    func getAndSet(_ work: (inout T) throws -> Void) rethrows -> T {
-        return try write { value in
+    func getAndSet<E: Error>(_ work: (inout T) throws(E) -> Void) throws(E) -> T where T: Copyable {
+        return try write { value throws(E) -> T in
             let oldValue = value
             try work(&value)
             return oldValue
@@ -99,14 +97,18 @@ public extension Synchronized {
     }
     
     func swap(_ otherValue: inout T) {
-        otherValue = getAndSet { value in
-            value = otherValue
+        write { value in
+            let temp = otherValue
+            otherValue = value
+            value = temp
         }
     }
     
-    func swap(_ otherValue: T) -> T {
-        getAndSet { value in
-            value = otherValue
-        }
+    func swap(_ otherValue: consuming T) -> T {
+        lock.exclusiveLock()
+        defer { lock.unlock() }
+        
+        Swift.swap(&_value, &otherValue)
+        return otherValue
     }
 }

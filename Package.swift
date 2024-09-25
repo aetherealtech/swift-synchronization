@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 
 import PackageDescription
 
@@ -14,29 +14,11 @@ let package = Package(
     targets: [
         .target(
             name: "Synchronization",
-            dependencies: [],
-            swiftSettings: [.concurrencyChecking(.complete)]
+            dependencies: []
         ),
         .testTarget(
             name: "SynchronizationTests",
-            dependencies: ["Synchronization"],
-            swiftSettings: [.concurrencyChecking(.complete)]
+            dependencies: ["Synchronization"]
         ),
     ]
 )
-
-extension SwiftSetting {
-    enum ConcurrencyChecking: String {
-        case complete
-        case minimal
-        case targeted
-    }
-    
-    static func concurrencyChecking(_ setting: ConcurrencyChecking = .minimal) -> Self {
-        unsafeFlags([
-            "-Xfrontend", "-strict-concurrency=\(setting)",
-            "-Xfrontend", "-warn-concurrency",
-            "-Xfrontend", "-enable-actor-data-race-checks",
-        ])
-    }
-}

@@ -43,7 +43,7 @@ public extension ReadWriteLock {
     /// - Parameter work: The block of work to submit
     /// - Returns: The value, if any, that is returned by the block of work
     /// - Throws: The error, if any, that is thrown by the block of work
-    func read<R>(_ work: () throws -> R) rethrows -> R {
+    func read<R, E: Error>(_ work: () throws(E) -> R) throws(E) -> R {
         lock()
         defer { unlock() }
         
@@ -55,7 +55,7 @@ public extension ReadWriteLock {
     /// - Parameter work: The block of work to submit
     /// - Returns: The value, if any, that is returned by the block of work
     /// - Throws: The error, if any, that is thrown by the block of work
-    func write<R>(_ work: () throws -> R) rethrows -> R {
+    func write<R, E: Error>(_ work: () throws(E) -> R) throws(E) -> R {
         exclusiveLock()
         defer { unlock() }
         
@@ -66,33 +66,18 @@ public extension ReadWriteLock {
 public struct SharedLock: Lockable {
     let _lock: ReadWriteLock
     
-    public func lock() {
-        _lock.lock()
-    }
-    
-    public func unlock() {
-        _lock.unlock()
-    }
+    public func lock() { _lock.lock() }
+    public func unlock() { _lock.unlock() }
 }
 
 public struct ExclusiveLock: Lockable {
     let _lock: ReadWriteLock
     
-    public func lock() {
-        _lock.exclusiveLock()
-    }
-    
-    public func unlock() {
-        _lock.unlock()
-    }
+    public func lock() { _lock.exclusiveLock() }
+    public func unlock() { _lock.unlock() }
 }
 
 public extension ReadWriteLock {
-    var sharedLockable: SharedLock {
-        SharedLock(_lock: self)
-    }
-    
-    var exclusiveLockable: ExclusiveLock {
-        ExclusiveLock(_lock: self)
-    }
+    var sharedLockable: SharedLock { .init(_lock: self) }
+    var exclusiveLockable: ExclusiveLock { .init(_lock: self) }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol ConditionVariableProtocol: Sendable {
+public protocol ConditionVariableProtocol: ~Copyable, Sendable {
     associatedtype Lock: Lockable
     
     func wait(
@@ -50,10 +50,10 @@ public extension ConditionVariableProtocol {
         )
     }
     
-    func wait(
+    func wait<E: Error>(
         lock: Lock,
-        _ condition: () throws -> Bool
-    ) rethrows {
+        _ condition: () throws(E) -> Bool
+    ) throws(E) {
         try wait(
             lock: lock,
             wait: self.wait,
@@ -61,11 +61,11 @@ public extension ConditionVariableProtocol {
         )
     }
     
-    func wait(
+    func wait<E: Error>(
         lock: Lock,
         for timeout: TimeInterval,
-        _ condition: () throws -> Bool
-    ) rethrows {
+        _ condition: () throws(E) -> Bool
+    ) throws(E) {
         try wait(
             lock: lock,
             wait: { lock in wait(lock: lock, for: timeout) },
@@ -74,11 +74,11 @@ public extension ConditionVariableProtocol {
     }
     
     @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
-    func wait(
+    func wait<E: Error>(
         lock: Lock,
         for timeout: Duration,
-        _ condition: () throws -> Bool
-    ) rethrows {
+        _ condition: () throws(E) -> Bool
+    ) throws(E) {
         try wait(
             lock: lock,
             wait: { lock in wait(lock: lock, for: timeout) },
@@ -86,11 +86,11 @@ public extension ConditionVariableProtocol {
         )
     }
     
-    func wait(
+    func wait<E: Error>(
         lock: Lock,
         until timeout: Date,
-        _ condition: () throws -> Bool
-    ) rethrows {
+        _ condition: () throws(E) -> Bool
+    ) throws(E) {
         try wait(
             lock: lock,
             wait: { lock in wait(lock: lock, until: timeout) },
@@ -99,13 +99,13 @@ public extension ConditionVariableProtocol {
     }
     
     @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
-    func wait<C: Clock>(
+    func wait<C: Clock, E: Error>(
         lock: Lock,
         until timeout: C.Instant,
         tolerance: C.Duration? = nil,
         clock: C,
-        _ condition: () throws -> Bool
-    ) rethrows where C.Duration == Duration {
+        _ condition: () throws(E) -> Bool
+    ) throws(E) where C.Duration == Duration {
         try wait(
             lock: lock,
             wait: { lock in wait(lock: lock, until: timeout, tolerance: tolerance, clock: clock) },
@@ -113,11 +113,11 @@ public extension ConditionVariableProtocol {
         )
     }
     
-    private func wait(
+    private func wait<E: Error>(
         lock: Lock,
         wait: (Lock) -> Void,
-        _ condition: () throws -> Bool
-    ) rethrows {
+        _ condition: () throws(E) -> Bool
+    ) throws(E) {
         while try !condition() {
             wait(lock)
         }

@@ -26,7 +26,7 @@ public final class Semaphore: @unchecked Sendable {
 }
 
 public extension Semaphore {
-    func acquire<R>(_ work: () throws -> R) rethrows -> R {
+    func acquire<R, E: Error>(_ work: () throws(E) -> R) throws(E) -> R {
         wait()
         defer { signal() }
                 

@@ -6,9 +6,7 @@ public final class CountdownLatch: @unchecked Sendable {
     public func wait() {
         lock.lock()
         defer { lock.unlock() }
-        
-        guard value > 0 else { return }
-        
+                
         condition.wait(lock: lock) {
             value == 0
         }
