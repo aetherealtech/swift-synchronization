@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "1F2ED45E-7610-421B-8518-A5957418097B",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "SynchronizationTests",
+        "name" : "SynchronizationTests"
+      }
+    }
+  ],
+  "version" : 1
+}

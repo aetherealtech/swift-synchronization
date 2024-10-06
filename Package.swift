@@ -10,7 +10,9 @@ let package = Package(
             targets: ["Synchronization"]
         ),
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/aetherealtech/swift-assertions", branch: "master"),
+    ],
     targets: [
         .target(
             name: "Synchronization",
@@ -18,7 +20,10 @@ let package = Package(
         ),
         .testTarget(
             name: "SynchronizationTests",
-            dependencies: ["Synchronization"]
+            dependencies: [
+                "Synchronization",
+                .product(name: "Assertions", package: "swift-assertions"),
+            ]
         ),
     ]
 )
