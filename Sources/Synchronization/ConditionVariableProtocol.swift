@@ -10,18 +10,18 @@ public protocol ConditionVariableProtocol: ~Copyable, Sendable {
     func wait(
         lock: Lock,
         for timeout: TimeInterval
-    )
+    ) -> Bool
     
     @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
     func wait(
         lock: Lock,
         for timeout: Duration
-    )
+    ) -> Bool
     
     func wait(
         lock: Lock,
         until timeout: Date
-    )
+    ) -> Bool
     
     @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
     func wait<C: Clock>(
@@ -29,27 +29,13 @@ public protocol ConditionVariableProtocol: ~Copyable, Sendable {
         until timeout: C.Instant,
         tolerance: C.Duration?,
         clock: C
-    ) where C.Duration == Duration
+    ) -> Bool where C.Duration == Duration
     
     func notifyOne()
     func notifyAll()
 }
 
 public extension ConditionVariableProtocol {
-    @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
-    func wait<C: Clock>(
-        lock: Lock,
-        until timeout: C.Instant,
-        clock: C
-    ) where C.Duration == Duration {
-        wait(
-            lock: lock,
-            until: timeout,
-            tolerance: nil,
-            clock: clock
-        )
-    }
-    
     func wait<E: Error>(
         lock: Lock,
         _ condition: () throws(E) -> Bool
@@ -65,7 +51,7 @@ public extension ConditionVariableProtocol {
         lock: Lock,
         for timeout: TimeInterval,
         _ condition: () throws(E) -> Bool
-    ) throws(E) {
+    ) throws(E) -> Bool {
         try wait(
             lock: lock,
             wait: { lock in wait(lock: lock, for: timeout) },
@@ -78,7 +64,7 @@ public extension ConditionVariableProtocol {
         lock: Lock,
         for timeout: Duration,
         _ condition: () throws(E) -> Bool
-    ) throws(E) {
+    ) throws(E) -> Bool {
         try wait(
             lock: lock,
             wait: { lock in wait(lock: lock, for: timeout) },
@@ -90,7 +76,7 @@ public extension ConditionVariableProtocol {
         lock: Lock,
         until timeout: Date,
         _ condition: () throws(E) -> Bool
-    ) throws(E) {
+    ) throws(E) -> Bool {
         try wait(
             lock: lock,
             wait: { lock in wait(lock: lock, until: timeout) },
@@ -105,7 +91,7 @@ public extension ConditionVariableProtocol {
         tolerance: C.Duration? = nil,
         clock: C,
         _ condition: () throws(E) -> Bool
-    ) throws(E) where C.Duration == Duration {
+    ) throws(E) -> Bool where C.Duration == Duration {
         try wait(
             lock: lock,
             wait: { lock in wait(lock: lock, until: timeout, tolerance: tolerance, clock: clock) },
@@ -121,5 +107,19 @@ public extension ConditionVariableProtocol {
         while try !condition() {
             wait(lock)
         }
+    }
+    
+    private func wait<E: Error>(
+        lock: Lock,
+        wait: (Lock) -> Bool,
+        _ condition: () throws(E) -> Bool
+    ) throws(E) -> Bool {
+        while try !condition() {
+            if !wait(lock) {
+                return false
+            }
+        }
+        
+        return true
     }
 }

@@ -24,13 +24,10 @@ public final class ConditionVariable: ConditionVariableProtocol, @unchecked Send
     public func wait(
         lock: Lock,
         for timeout: TimeInterval
-    ) {
-        let seconds = Int(timeout)
-        let nanoseconds = Int((timeout - TimeInterval(seconds)) * 1e9)
-        
+    ) -> Bool {
         wait(
             lock: lock,
-            timespec: .init(tv_sec: seconds, tv_nsec: nanoseconds)
+            until: .init().addingTimeInterval(timeout)
         )
     }
     
@@ -38,20 +35,33 @@ public final class ConditionVariable: ConditionVariableProtocol, @unchecked Send
     public func wait(
         lock: Lock,
         for timeout: Duration
-    ) {
-        wait(
+    ) -> Bool {
+        var ts = timespec(timeout)
+        
+        var tsNow = timespec()
+        clock_gettime(CLOCK_REALTIME, &tsNow);
+        
+        ts.tv_sec += tsNow.tv_sec
+        ts.tv_nsec += tsNow.tv_nsec
+        
+        return wait(
             lock: lock,
-            timespec: .init(timeout)
+            timespec: ts
         )
     }
     
     public func wait(
         lock: Lock,
         until timeout: Date
-    ) {
-        wait(
+    ) -> Bool {
+        let absTime = timeout.timeIntervalSince1970
+        
+        let seconds = Int(absTime)
+        let nanoseconds = Int((absTime - TimeInterval(seconds)) * 1e9)
+        
+        return wait(
             lock: lock,
-            for: timeout.timeIntervalSinceNow
+            timespec: .init(tv_sec: seconds, tv_nsec: nanoseconds)
         )
     }
     
@@ -59,9 +69,9 @@ public final class ConditionVariable: ConditionVariableProtocol, @unchecked Send
     public func wait<C: Clock>(
         lock: Lock,
         until timeout: C.Instant,
-        tolerance: C.Duration? = nil,
+        tolerance: C.Duration?,
         clock: C
-    ) where C.Duration == Duration {
+    ) -> Bool where C.Duration == Duration {
         wait(
             lock: lock,
             for: timeout.duration(to: clock.now)
@@ -81,8 +91,9 @@ public final class ConditionVariable: ConditionVariableProtocol, @unchecked Send
     private func wait(
         lock: Lock,
         timespec: timespec
-    ) {
-        var timespec = timespec
-        pthread_cond_timedwait(&conditionVariable, &lock.mutex, &timespec)
+    ) -> Bool {
+        withUnsafePointer(to: timespec) { timespec in
+            pthread_cond_timedwait(&conditionVariable, &lock.mutex, timespec) != ETIMEDOUT
+        }
     }
 }
