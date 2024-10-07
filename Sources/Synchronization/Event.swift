@@ -1,15 +1,7 @@
-import unistd
+import Darwin
 
 public final class Event: @unchecked Sendable {
     public init() {}
-    
-    deinit {
-        lock.lock {
-            if !waiters.isEmpty {
-                fatalError("Event was destroyed while threads were waiting on it.")
-            }
-        }
-    }
 
     public var signaled: Bool { lock.lock { _signaled } }
     
@@ -20,11 +12,13 @@ public final class Event: @unchecked Sendable {
         
         guard !_signaled else { return }
         
-        let threadId = getpid()
+        var threadId: UInt64 = 0
+        pthread_threadid_np(nil, &threadId);
+        
         waiters.insert(threadId)
         
         conditionVariable.wait(lock: lock) {
-            waiters.contains(threadId)
+            !waiters.contains(threadId)
         }
     }
 
@@ -45,6 +39,6 @@ public final class Event: @unchecked Sendable {
 
     private let lock = Lock()
     private var _signaled = false
-    private var waiters = Set<pid_t>()
+    private var waiters = Set<UInt64>()
     private let conditionVariable = ConditionVariable()
 }

@@ -4,7 +4,6 @@ import XCTest
 @testable import Synchronization
 
 final class SemaphoreTests: XCTestCase {
-    @MainActor
     func testSemaphore() async throws {
         let semaphore = Semaphore(value: 5)
         
