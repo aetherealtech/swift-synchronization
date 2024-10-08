@@ -1,13 +1,13 @@
 {
-  "originHash" : "590696cc18998d0db3128c2feaf451ad2920ee81c5cdfd8cec2482ec06f9224e",
+  "originHash" : "43dc647cf7667ae07ab406b5127081e9d9e563a5e37481327f72beb0d918032d",
   "pins" : [
     {
       "identity" : "swift-assertions",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/aetherealtech/swift-assertions",
       "state" : {
-        "branch" : "master",
-        "revision" : "651337bab5f9911e083cf445a5bbab4bfc753395"
+        "revision" : "e66945f6db5372a5c615e974c534c0d89b76171c",
+        "version" : "0.1.0"
       }
     },
     {
